@@ -101,6 +101,8 @@ def main(args):
         print(f"Epoch {epoch}: Test Loss: {total_loss/len(test_dataloader)}; Patience: {patience}/{max_patience}")
         save_latest(run_path, clip_trainer, optimizer, epoch)
         best_loss = save_best(run_path, clip_trainer, optimizer, epoch, total_loss, best_loss)
+    train_csv.close()
+    test_csv.close()
 
 
 if __name__ == '__main__':
