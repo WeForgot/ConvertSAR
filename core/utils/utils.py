@@ -37,15 +37,6 @@ def get_parameter_count(model: nn.Module):
     return t_params, u_params
 
 def get_train_test_split(dataset: List[Any], train_ratio: float = 0.8):
-    """Splits the dataset into training and testing sets.
-
-    Args:
-        dataset: The dataset to split.
-        train_ratio: The ratio of the dataset to use for training.
-
-    Returns:
-        A tuple containing the training and testing datasets.
-    """
     train_size = int(len(dataset) * train_ratio)
     train_split, test_split = dataset[:train_size], dataset[train_size:]
     return train_split, test_split

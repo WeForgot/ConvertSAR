@@ -100,6 +100,9 @@ def main(args):
                 break
         print(f"Epoch {epoch}: Test Loss: {total_loss/len(test_dataloader)}; Patience: {patience}/{max_patience}")
         save_latest(run_path, clip_trainer, optimizer, epoch)
+        if total_loss < best_loss:
+            torch.save(clip_trainer.saml_encoder.state_dict(), os.path.join(run_path, 'saml_encoder.pth'))
+            torch.save(clip_trainer.image_encoder.state_dict(), os.path.join(run_path, 'image_encoder.pth'))
         best_loss = save_best(run_path, clip_trainer, optimizer, epoch, total_loss, best_loss)
     train_csv.close()
     test_csv.close()
