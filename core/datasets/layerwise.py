@@ -1,6 +1,10 @@
 import os
+import random
+
 import cv2
 import numpy as np
+
+from core.utils.utils import clamp
 
 # --- Updated canvas_to_pixel ---
 def canvas_to_pixel(x, y):
@@ -9,8 +13,8 @@ def canvas_to_pixel(x, y):
     to image pixel coordinates in a 512x512 canvas.
     Here, we removed the negative on y to flip the image, so note that your cropping must be adjusted.
     """
-    pixel_x = ((x + 127.0) / 254.0) * 511.0
-    pixel_y = ((y + 127.0) / 254.0) * 511.0  # removed negative sign
+    pixel_x = ((x + 127.0) / 254.0) * 512.0
+    pixel_y = ((y + 127.0) / 254.0) * 512.0  # removed negative sign
     return [pixel_x, pixel_y]
 
 # --- Convert a SAML layer into a warped RGBA image ---
@@ -49,13 +53,34 @@ def convert_layer(image_path, rgba_color, quad_coords):
     # Convert quad_coords from SAML canvas to pixel coordinates.
     pts2 = np.array([canvas_to_pixel(pt[0], pt[1]) for pt in quad_coords], dtype=np.float32)
 
-    # Compute perspective transform and warp into our 512x512 canvas.
+    # Pre-multiply alpha before transformation
+    premultiplied = colored.astype(np.float32) / 255.0
+    premultiplied[:, :, 0] *= premultiplied[:, :, 3]
+    premultiplied[:, :, 1] *= premultiplied[:, :, 3]
+    premultiplied[:, :, 2] *= premultiplied[:, :, 3]
+    
+    # Compute perspective transform and warp the premultiplied image
     M = cv2.getPerspectiveTransform(pts1, pts2)
-    warped = cv2.warpPerspective(colored, M, (512, 512),
-                                 flags=cv2.INTER_LINEAR,
-                                 borderMode=cv2.BORDER_CONSTANT,
-                                 borderValue=(0, 0, 0, 0))
-    return warped
+    warped = cv2.warpPerspective(premultiplied, M, (512, 512),
+                                flags=cv2.INTER_LANCZOS4,
+                                borderMode=cv2.BORDER_CONSTANT,
+                                borderValue=(0, 0, 0, 0))
+    
+    # Un-multiply alpha after transformation
+    alpha = warped[:, :, 3]
+    mask = alpha > 0.001  # Avoid division by zero
+    result = np.zeros_like(warped)
+    result[:, :, 3] = alpha
+    
+    # Only un-multiply where alpha > 0
+    result[mask, 0] = warped[mask, 0] / alpha[mask]
+    result[mask, 1] = warped[mask, 1] / alpha[mask]
+    result[mask, 2] = warped[mask, 2] / alpha[mask]
+    
+    # Convert back to uint8
+    result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
+    
+    return result
 
 def alpha_blend_float32(dst, src):
     """
@@ -139,34 +164,45 @@ class Layer:
           [type, r, g, b, a, ltx, lty, lbx, lby, rtx, rty, rbx, rby]
         """
         self.cls_id = int(layer_array[0])
+        self.visible = bool(layer_array[1])
         # Assume r,g,b are integers (0–255) and a is a float in [0,1].
-        self.rgb = [int(layer_array[i]) for i in range(1, 4)]
-        self.alpha = int(float(layer_array[4]) * 255)
+        self.rgb = [int(layer_array[i]) for i in range(2, 5)]
+        self.alpha = int(float(layer_array[5]) * 255)
         self.rgba = [self.rgb[0], self.rgb[1], self.rgb[2], self.alpha]
 
         # SAML eight numbers come as: ltx, lty, lbx, lby, rtx, rty, rbx, rby.
         # Reorder them to quad order: top-left, top-right, bottom-right, bottom-left.
-        ltx, lty = float(layer_array[5]), float(layer_array[6])
-        lbx, lby = float(layer_array[7]), float(layer_array[8])
-        rtx, rty = float(layer_array[9]), float(layer_array[10])
-        rbx, rby = float(layer_array[11]), float(layer_array[12])
+        ltx, lty = float(layer_array[6]), float(layer_array[7])
+        lbx, lby = float(layer_array[8]), float(layer_array[9])
+        rtx, rty = float(layer_array[10]), float(layer_array[11])
+        rbx, rby = float(layer_array[12]), float(layer_array[13])
         self.quad_coords = [
             [ltx, lty],  # top-left
             [rtx, rty],  # top-right
             [rbx, rby],  # bottom-right
             [lbx, lby]   # bottom-left
         ]
+    
+    def as_array(self):
+        return [self.cls_id, self.visible] + self.rgba + [coord for pt in self.quad_coords for coord in pt]
+
 
     def __repr__(self):
         return f'Layer(cls_id={self.cls_id}, rgba={self.rgba}, quad={self.quad_coords})'
 
     def render(self):
-        asset_path = os.path.join('assets', f'{self.cls_id + 1}.png')
-        return convert_layer(asset_path, self.rgba, self.quad_coords)
+        if self.visible:
+            asset_path = os.path.join('assets', f'{self.cls_id + 1}.png')
+            return convert_layer(asset_path, self.rgba, self.quad_coords)
+        else:
+            return None
 
 class SAImage:
     def __init__(self, layer_arrays):
         self.layers = [Layer(layer) for layer in layer_arrays]
+    
+    def __len__(self):
+        return len(self.layers)
 
     def incremental_render(self, crop=True):
         """
@@ -185,6 +221,9 @@ class SAImage:
         #reversed_layers = list(reversed(self.layers))
 
         for i, layer in enumerate(self.layers, start=1):
+            # Skip invisible layers
+            if not layer.visible:
+                continue
             # Render the layer as 8-bit RGBA
             layer_img = layer.render()  # shape (512, 512, 4), dtype uint8
             # Convert to float32 premultiplied
@@ -212,5 +251,6 @@ class SAImage:
         # Just take the *last* yield from incremental_render
         final_image = None
         for img in self.incremental_render(crop=crop):
-            final_image = img
+            if img is not None:
+                final_image = img
         return final_image

@@ -1,9 +1,13 @@
+import glob
 from math import ceil
 import os
 import shutil
 from typing import List, Any
+import xml.etree.ElementTree as ETO
 
 import cv2
+
+import lxml.etree as ET
 
 import numpy as np
 
@@ -12,6 +16,70 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from tqdm import tqdm
+
+from webcolors import hex_to_rgb, rgb_to_hex
+
+def get_data_for_conversion(path: str):
+    all_data = glob.glob(os.path.join(path, '*.saml'))
+    data = []
+    for saml_path in tqdm(all_data, desc='Loading SAML files', leave=False):
+        with open(saml_path, 'r', encoding='utf-8-sig') as f:
+            root = ETO.fromstring(f.read())
+        layers = []
+        names = []
+        for edx, layer in enumerate(root):
+            attribs = layer.attrib
+            cur_type = attribs['type']
+            visible = bool(attribs['visible'])
+            r, g, b = hex_to_rgb(attribs['color'])
+            ltx, lty, lbx, lby, rtx, rty, rbx, rby = list(map(lambda x: int(x), [attribs['ltx'], attribs['lty'], attribs['lbx'], attribs['lby'], attribs['rtx'], attribs['rty'], attribs['rbx'], attribs['rby']]))
+            r, g, b, a = r, g, b, float(attribs['alpha'])
+            layers.append([cur_type, visible, r, g, b, a, ltx, lty, lbx, lby, rtx, rty, rbx, rby])
+        name = os.path.splitext(os.path.basename(saml_path))[0]
+        layers = list(reversed(layers))
+        bundle = {'layers': layers, 'name': name}
+        data.append(bundle)
+    return data
+
+def convert_numpy_to_saml(data, dest_path=None, name='Test') -> None:
+    if dest_path is None:
+        dest_path = name + '.saml'
+    
+    with open(dest_path, 'w') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n')
+        saml_lines = []
+        for line in data:
+                saml_lines.append(line)
+        xml_data = ET.Element('sa')
+        xml_data.set('name', name)
+        xml_data.set('visible', 'true')
+        xml_data.set('version', '1')
+        xml_data.set('author', '1337')
+        xml_data.set('width', '192')
+        xml_data.set('height', '96')
+        xml_data.set('sound', '1')
+        for ldx, line in enumerate(saml_lines):
+            layer = ET.SubElement(xml_data, 'layer')
+            layer.set('name', 'Symbol {}'.format(ldx))
+            layer.set('type', '{}'.format(int(line[0])))
+            layer.set('visible', 'true' if line[1] else 'false')
+            color_tup = [clamp(int(x), 0, 255) for x in line[2:5]]
+            color_tup = rgb_to_hex(color_tup)
+            layer.set('color', str(color_tup))
+            alpha_val = '{:.6f}'.format(clamp(line[5], 0, 1))
+            layer.set('alpha', alpha_val)
+            positions = list(map(lambda x: str(clamp(int(((x))), -127, 127)), line[6:]))
+            layer.set('ltx', positions[0])
+            layer.set('lty', positions[1])
+            layer.set('lbx', positions[2])
+            layer.set('lby', positions[3])
+            layer.set('rtx', positions[4])
+            layer.set('rty', positions[5])
+            layer.set('rbx', positions[6])
+            layer.set('rby', positions[7])
+        f.write(ET.tostring(xml_data, pretty_print=True).decode('utf8'))
 
 def delete_files_in_folder(folder_path):
     """Deletes all files within the specified folder.
