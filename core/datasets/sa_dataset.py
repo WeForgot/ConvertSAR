@@ -81,37 +81,66 @@ class SADataset(Dataset):
 
 def get_data(verbose: bool = False, layer_names: list = None, all_data: list = None, max_len: int = 256, pos_const: float = 127.0, col_const: float = 256.0):
     if all_data is None:
-        all_data = glob.glob(os.path.join('.','data','*.saml'))
+        all_data = glob.glob(os.path.join('.','output', 'base','*.saml'))
     data = []
     vocab = Vocabulary(layer_names=layer_names)
-    sos_line = [vocab['<SOS>']] + [0] * 12
+    sos_line = [vocab['< SOS >']] + [0] * 12
     eos_line = [vocab['<EOS>']] + [0] * 12
     pad_line = [vocab['<PAD>']] + [0] * 12
+    
     for saml_path in tqdm(all_data, desc='Loading SAML files', leave=False):
-        if verbose:
-            print('Loading {}'.format(saml_path))
-        with open(saml_path, 'r', encoding='utf-8-sig') as f:
-            root = ETO.fromstring(f.read())
-        layers = [sos_line]
-        mask = [True]
-        for edx, layer in enumerate(root):
-            attribs = layer.attrib
-            cur_type = vocab[attribs['type']]
-            if cur_type == '0':
-                print(cur_type)
-            r, g, b = hex_to_rgb(attribs['color'])
-            ltx, lty, lbx, lby, rtx, rty, rbx, rby = list(map(lambda x: int(x)/pos_const, [attribs['ltx'], attribs['lty'], attribs['lbx'], attribs['lby'], attribs['rtx'], attribs['rty'], attribs['rbx'], attribs['rby']]))
-            r, g, b, a = r/col_const, g/col_const, b/col_const, float(attribs['alpha'])
-            layers.append([cur_type, r, g, b, a, ltx, lty, lbx, lby, rtx, rty, rbx, rby])
+        try:
+            if verbose:
+                print('Loading {}'.format(saml_path))
+            with open(saml_path, 'r', encoding='utf-8-sig') as f:
+                root = ETO.fromstring(f.read())
+            
+            layers = [sos_line]
+            mask = [True]
+            
+            # New function to process elements recursively
+            def process_elements(element):
+                collected_layers = []
+                for child in element:
+                    if child.tag == 'layer':
+                        # Process layer as before
+                        attribs = child.attrib
+                        cur_type = vocab[attribs['type']]
+                        if cur_type == '0':
+                            print(cur_type)
+                        r, g, b = hex_to_rgb(attribs['color'])
+                        ltx, lty, lbx, lby, rtx, rty, rbx, rby = list(map(
+                            lambda x: int(x)/pos_const, 
+                            [attribs['ltx'], attribs['lty'], attribs['lbx'], 
+                             attribs['lby'], attribs['rtx'], attribs['rty'], 
+                             attribs['rbx'], attribs['rby']]
+                        ))
+                        r, g, b, a = r/col_const, g/col_const, b/col_const, float(attribs['alpha'])
+                        collected_layers.append([cur_type, r, g, b, a, ltx, lty, lbx, lby, rtx, rty, rbx, rby])
+                    elif child.tag == 'g':
+                        # Recursively process group
+                        collected_layers.extend(process_elements(child))
+                return collected_layers
+            
+            # Get all layers from all groups and direct children
+            all_layers = process_elements(root)
+            
+            # Add all collected layers
+            for layer_data in all_layers:
+                layers.append(layer_data)
+                mask.append(True)
+                
+            layers.append(eos_line)
             mask.append(True)
-        layers.append(eos_line)
-        mask.append(True)
-        while len(layers) < max_len:
-            layers.append(pad_line)
-            mask.append(False)
-        img_path = saml_path[:-4] + 'png'
-        bundle = {'feature': img_path, 'label': np.asarray(layers, dtype=np.float32), 'mask': np.asarray(mask, dtype=bool)}
-        data.append(bundle)
+            while len(layers) < max_len:
+                layers.append(pad_line)
+                mask.append(False)
+                
+            img_path = saml_path[:-4] + 'png'
+            bundle = {'feature': img_path, 'label': np.asarray(layers, dtype=np.float32), 'mask': np.asarray(mask, dtype=bool)}
+            data.append(bundle)
+        except Exception as e:
+            print(f'Error loading {saml_path}: {e}')
     return vocab, data
 
 def convert_numpy_to_saml(data: list, vocab: Vocabulary, dest_path: str = None, name: str = 'Test', clamp_values: bool = False, pos_const: float = 127.0, col_const: float = 256.0) -> None:

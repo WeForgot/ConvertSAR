@@ -14,6 +14,7 @@ from core.datasets.sa_dataset import get_data, SADataset
 from core.models.other.clip import CLIPTraininer
 from core.utils.factories import get_encoder, get_decoder, get_optimizer
 from core.utils.utils import get_parameter_count, get_train_test_split, get_run_path, save_latest, save_best
+from core.utils.zclip import ZClip
 
 def main(args):
     device = torch.device('cuda:0') if torch.cuda.device_count() > 0 else torch.device('cpu')
@@ -41,6 +42,7 @@ def main(args):
     clip_trainer = CLIPTraininer(vision_encoder, text_encoder).to(device)
     print('Number of parameters:\n\tTrainable: {}\n\tUntrainable: {}'.format(*(get_parameter_count(clip_trainer))))
     optimizer = get_optimizer(optimizer_cfg, clip_trainer.parameters())
+    zclip = ZClip()
 
     run_path = get_run_path(run_name='clip')
     print('Run path: {}'.format(run_path))
@@ -71,6 +73,7 @@ def main(args):
 
             optimizer.zero_grad()
             loss.backward()
+            zclip.step(clip_trainer)
             optimizer.step()
 
             total_loss += loss.item()

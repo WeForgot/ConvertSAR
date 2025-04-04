@@ -20,23 +20,13 @@ def random_name(length: int = 10) -> str:
     return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(length))
 
 def remove_introns(img_layers: list):
-    sa_img = SAImage(img_layers)
-    to_remove = []
-    old_img = None
-    for idx, img in enumerate(tqdm(sa_img.incremental_render(), desc='Removing introns', leave=False)):
-        if old_img is None:
-            old_img = img
-            continue
-        if np.array_equal(old_img, img):
-            to_remove.append(idx)
-    for ldx in to_remove:
-        img_layers.pop(ldx)
+    
     return img_layers
 
 def crossover(img_layers_one: list, img_layers_two: list) -> list:
     crossover_point = random.randint(0, min(len(img_layers_one) - 1, len(img_layers_two) - 1))
-    img_one_part_one, img_one_part_two = img_layers_one[:crossover_point], img_layers_one[crossover_point:]
-    img_two_part_one, img_two_part_two = img_layers_two[:crossover_point], img_layers_two[crossover_point:]
+    img_one_part_one, _ = img_layers_one[:crossover_point], img_layers_one[crossover_point:]
+    _, img_two_part_two = img_layers_two[:crossover_point], img_layers_two[crossover_point:]
     return img_one_part_one + img_two_part_two
 
 def mutate(img_layers: list) -> list:
@@ -72,11 +62,7 @@ def main(data_folder: str, output_folder = None, num_rounds: int = 10, num_to_ge
         for _ in range(num_rounds):
             layers_one = evolution_round(layers_one, layers_two)
         cleaned_one = remove_introns(layers_one)
-        sa_image = SAImage(cleaned_one)
-        img_array = sa_image.render()
-        img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2BGRA)
         name = random_name()
-        cv2.imwrite(os.path.join(output_folder, name + '.png'), img_array)
         convert_numpy_to_saml(list(reversed(cleaned_one)), os.path.join(output_folder, name + '.saml'), name=name)
 
 if __name__ == '__main__':

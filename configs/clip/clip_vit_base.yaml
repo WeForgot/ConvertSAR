@@ -1,0 +1,33 @@
+vision_encoder:
+ type: vit
+ args:
+  dim: 512
+  num_heads: 8
+  num_layers: 2
+  image_size: 384
+  patch_size: 16
+  num_channels: 4
+  final_dim: 512
+
+text_encoder:
+ type: saml
+ args:
+  dim: 512
+  num_heads: 8
+  num_layers: 2
+  vocab_dim: 128
+  max_saml_layers: 230
+  final_dim: 512
+
+optimizer:
+ type: adamw
+ args:
+  lr: 1e-4
+  weight_decay: 1e-2
+
+hyperparameters:
+ epochs: 10000
+ max_patience: 50
+ batch_size: 64
+ train_split_size: 0.8
+ seed: 69
