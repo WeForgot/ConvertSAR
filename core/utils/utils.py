@@ -65,13 +65,13 @@ def convert_numpy_to_saml(data, dest_path=None, name='Test') -> None:
             layer = ET.SubElement(xml_data, 'layer')
             layer.set('name', 'Symbol {}'.format(ldx))
             layer.set('type', '{}'.format(int(line[0])))
-            layer.set('visible', 'true' if line[1] else 'false')
-            color_tup = [clamp(int(x), 0, 255) for x in line[2:5]]
+            layer.set('visible', 'true')
+            color_tup = [clamp(int(x), 0, 255) for x in line[1:4]]
             color_tup = rgb_to_hex(color_tup)
             layer.set('color', str(color_tup))
-            alpha_val = '{:.6f}'.format(clamp(line[5], 0, 1))
+            alpha_val = '{:.6f}'.format(clamp(line[4], 0, 1))
             layer.set('alpha', alpha_val)
-            positions = list(map(lambda x: str(clamp(int(((x))), -127, 127)), line[6:]))
+            positions = list(map(lambda x: str(clamp(int(((x))), -127, 127)), line[5:]))
             layer.set('ltx', positions[0])
             layer.set('lty', positions[1])
             layer.set('lbx', positions[2])

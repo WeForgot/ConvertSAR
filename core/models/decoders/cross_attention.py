@@ -5,15 +5,14 @@ import torch.nn.functional as F
 from core.models.other.auxilary import PositionalEncoding, GEGLU
 
 class CrossAttentionDecoder(nn.Module):
-    def __init__(self, num_cls, emb_size, dim, layers, heads) -> None:
+    def __init__(self, vocab_size, vocab_dim, dim, num_layers, num_heads, max_saml_layers) -> None:
         super(CrossAttentionDecoder, self).__init__()
-        max_len = 256
-        self.layer_embs = nn.Embedding(num_cls, emb_size)
+        self.layer_embs = nn.Embedding(vocab_size, vocab_dim)
         self.projection = nn.Linear(self.layer_embs.weight.shape[-1] + 4 + 8, dim)
-        self.pos_emb = PositionalEncoding(max_len, dim)
-        dec_layer = nn.TransformerDecoderLayer(dim, heads, dim_feedforward=min(4*dim, 2048), activation=F.gelu, batch_first=True)
-        self.decoder = nn.TransformerDecoder(dec_layer, layers)
-        self.num_cls = num_cls
+        self.pos_emb = PositionalEncoding(max_saml_layers, dim)
+        dec_layer = nn.TransformerDecoderLayer(dim, num_heads, dim_feedforward=min(4*dim, 2048), activation=F.gelu, batch_first=True)
+        self.decoder = nn.TransformerDecoder(dec_layer, num_layers)
+        self.num_cls = vocab_size
 
         self.cls_out = nn.Sequential(
             GEGLU(dim),
