@@ -1,0 +1,28 @@
+vision_encoder:
+ checkpoint: ./runs/clip/5/
+
+text_decoder:
+ type: rnn
+ args:
+  dim: 128
+  num_layers: 3
+  vocab_dim: 256
+  max_saml_layers: 230
+
+optimizer:
+ type: adamw
+ args:
+  lr: 1e-4
+  weight_decay: 1e-2
+
+hyperparameters:
+ epochs: 10000
+ max_patience: 100
+ batch_size: 64
+ train_split_size: 0.8
+ seed: 69
+ test_data: ./output/test/
+ unfreeze_epoch: 0
+ cls_loss_start: 0
+ col_loss_start: 100
+ pos_loss_start: 200

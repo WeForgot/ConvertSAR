@@ -54,6 +54,7 @@ def main(args):
         with open(os.path.join(vision_cfg['checkpoint'], 'config.yaml'), 'r') as f:
             vision_cfg = yaml.safe_load(f)['vision_encoder']
     text_cfg = args['text_decoder']
+    text_cfg['args']['input_dim'] = vision_cfg['args']['dim']
     optimizer_cfg = args['optimizer']
     hyperparameter_cfg = args['hyperparameters']
 
@@ -101,14 +102,24 @@ def main(args):
     train_csv.write('epoch,train_loss\n')
     test_csv.write('epoch,test_loss\n')
 
+    cls_loss_start = 0 if 'cls_loss_start' not in hyperparameter_cfg else hyperparameter_cfg['cls_loss_start']
+    col_loss_start = 0 if 'col_loss_start' not in hyperparameter_cfg else hyperparameter_cfg['col_loss_start']
+    pos_loss_start = 0 if 'pos_loss_start' not in hyperparameter_cfg else hyperparameter_cfg['pos_loss_start']
+
     for epoch in range(epochs):
         model.train()
+        if epoch == col_loss_start or epoch == pos_loss_start or epoch == cls_loss_start:
+            print('Adding new loss, resetting optimizer and patience')
+            patience = 0
+            best_loss = float('inf')
+            optimizer = get_optimizer(optimizer_cfg, model.parameters())
+            zclip = ZClip()
         if epoch == unfreeze_epoch:
             model.unfreeze_encoder()
             print('Unfreezing encoder')
         elif epoch < unfreeze_epoch:
             model.freeze_encoder()
-        total_loss = 0.0
+        total_loss, cls_total, col_total, pos_total = 0.0, 0.0, 0.0, 0.0
         for bdx, batch in enumerate(tqdm(train_dataloader, desc='Training', leave=False)):
             feature = batch['feature'].to(device)
             labels = batch['label']
@@ -116,15 +127,27 @@ def main(args):
             cls_out, col_out, pos_out = xout[:,:,0], xout[:,:,1:5], xout[:,:,5:]
             mask_in, mask_out = batch['mask'][:, :-1].to(device), batch['mask'][:, 1:].to(device)
 
+            losses = []
+
             cls_guess, col_guess, pos_guess = model(xin, feature, mask_in)
             cls_loss = F.cross_entropy(cls_guess.permute(0,2,1), cls_out.long(), ignore_index=vocab['<PAD>'])
+            if epoch >= cls_loss_start:
+                losses.append(cls_loss)
+                cls_total += cls_loss.item()
             col_loss = F.mse_loss(col_guess, col_out, reduction='none')
             col_loss = (col_loss * repeat(mask_out, 'b l -> b l d', d=4).float()).sum()
             col_loss = col_loss / mask_out.sum()
+            if epoch >= col_loss_start:
+                losses.append(col_loss)
+                col_total += col_loss.item()
             pos_loss = F.mse_loss(pos_guess, pos_out, reduction='none')
             pos_loss = (pos_loss * repeat(mask_out, 'b l -> b l d', d=8).float()).sum()
             pos_loss = pos_loss / mask_out.sum()
-            train_loss = (cls_loss + col_loss + pos_loss)
+            if epoch >= pos_loss_start:
+                losses.append(pos_loss)
+                pos_total += pos_loss.item()
+            train_loss = sum(losses)
+            #train_loss = (cls_loss + col_loss + pos_loss)
 
             optimizer.zero_grad()
             train_loss.backward()
@@ -133,10 +156,10 @@ def main(args):
 
             total_loss += train_loss.item()
         train_csv.write(f'{epoch},{total_loss/len(train_dataloader)}\n')
-        print(f"Epoch {epoch}: Train Loss: {total_loss/len(train_dataloader)}")
+        print(f"Epoch #{epoch}; Train Loss: {total_loss/len(train_dataloader)}; Class Loss: {cls_total/len(train_dataloader)}; Color Loss: {col_total/len(train_dataloader)}; Position Loss: {pos_total/len(train_dataloader)}")
 
         model.eval()
-        total_loss = 0.0
+        total_loss, cls_total, col_total, pos_total = 0.0, 0.0, 0.0, 0.0
         with torch.no_grad():
             for bdx, batch in enumerate(tqdm(test_dataloader, desc='Testing', leave=False)):
                 feature = batch['feature'].to(device)
@@ -145,15 +168,27 @@ def main(args):
                 cls_out, col_out, pos_out = xout[:,:,0], xout[:,:,1:5], xout[:,:,5:]
                 mask_in, mask_out = batch['mask'][:, :-1].to(device), batch['mask'][:, 1:].to(device)
 
+                losses = []
+
                 cls_guess, col_guess, pos_guess = model(xin, feature, mask_in)
                 cls_loss = F.cross_entropy(cls_guess.permute(0,2,1), cls_out.long(), ignore_index=vocab['<PAD>'])
+                if epoch >= cls_loss_start:
+                    losses.append(cls_loss)
+                    cls_total += cls_loss.item()
                 col_loss = F.mse_loss(col_guess, col_out, reduction='none')
                 col_loss = (col_loss * repeat(mask_out, 'b l -> b l d', d=4).float()).sum()
                 col_loss = col_loss / mask_out.sum()
+                if epoch >= col_loss_start:
+                    losses.append(col_loss)
+                    col_total += col_loss.item()
                 pos_loss = F.mse_loss(pos_guess, pos_out, reduction='none')
                 pos_loss = (pos_loss * repeat(mask_out, 'b l -> b l d', d=8).float()).sum()
                 pos_loss = pos_loss / mask_out.sum()
-                test_loss = (cls_loss + col_loss + pos_loss)
+                if epoch >= pos_loss_start:
+                    losses.append(pos_loss)
+                    pos_total += pos_loss.item()
+                #test_loss = (cls_loss + col_loss + pos_loss)
+                test_loss = sum(losses)
                 total_loss += test_loss.item()
         test_csv.write(f'{epoch},{total_loss/len(test_dataloader)}\n')
         if total_loss < best_loss:
@@ -163,7 +198,7 @@ def main(args):
             if patience >= max_patience:
                 print(f"Early stopping at epoch {epoch}")
                 break
-        print(f"Epoch {epoch}: Test Loss: {total_loss/len(test_dataloader)}; Patience: {patience}/{max_patience}")
+        print(f"Epoch {epoch}: Test Loss: {total_loss/len(test_dataloader)}; Class Loss: {cls_total/len(test_dataloader)}; Color Loss: {col_total/len(test_dataloader)}; Position Loss: {pos_total/len(test_dataloader)}; Patience: {patience}/{max_patience}")
         save_latest(run_path, model, optimizer, epoch)
         if total_loss < best_loss:
             for img in test_imgs:

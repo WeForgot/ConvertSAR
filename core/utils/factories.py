@@ -12,6 +12,7 @@ ENCODER_REGISTRY = {
 
 DECODER_REGISTRY = {
     'cross': CrossAttentionDecoder,
+    'rnn': RNNDecoder
 }
 
 OPTIMIZER_REGISTRY = {

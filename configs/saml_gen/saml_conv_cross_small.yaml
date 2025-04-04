@@ -2,10 +2,9 @@ vision_encoder:
  checkpoint: ./runs/clip/5/
 
 text_decoder:
- type: cross
+ type: rnn
  args:
   dim: 128
-  num_heads: 4
   num_layers: 2
   vocab_dim: 64
   max_saml_layers: 230
