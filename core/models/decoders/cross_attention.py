@@ -18,7 +18,7 @@ class CrossAttentionDecoder(nn.Module):
         self.cls_out = nn.Sequential(
             GEGLU(dim),
             nn.Dropout(p=0.1),
-            nn.Linear(dim, self.num_cls)
+            nn.Linear(dim, vocab_dim)
         )
 
         self.col_out = nn.Sequential(
@@ -48,4 +48,5 @@ class CrossAttentionDecoder(nn.Module):
         context = self.ctx_proj(context)
         x = self.decoder(x, context, tgt_mask=mask, tgt_is_causal=True, tgt_key_padding_mask=padding_mask)
         cls_out, col_out, pos_out = self.cls_out(x), self.col_out(x), self.pos_out(x)
+        cls_out = torch.matmul(cls_out, self.layer_embs.weight.T)
         return cls_out, col_out, pos_out

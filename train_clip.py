@@ -20,6 +20,7 @@ def main(args):
     device = torch.device('cuda:0') if torch.cuda.device_count() > 0 else torch.device('cpu')
     vision_cfg = args['vision_encoder']
     text_cfg = args['text_encoder']
+    clip_cfg = args['clip_trainer']
     optimizer_cfg = args['optimizer']
     hyperparameter_cfg = args['hyperparameters']
 
@@ -43,7 +44,7 @@ def main(args):
 
     vision_encoder = get_encoder(vision_cfg)
     text_encoder = get_encoder(text_cfg)
-    clip_trainer = CLIPTraininer(vision_encoder, text_encoder).to(device)
+    clip_trainer = CLIPTraininer(vision_encoder, text_encoder, clip_cfg['final_dim']).to(device)
     print('Number of parameters:\n\tTrainable: {}\n\tUntrainable: {}'.format(*(get_parameter_count(clip_trainer))))
     optimizer = get_optimizer(optimizer_cfg, clip_trainer.parameters())
     zclip = ZClip()

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from core.models.other.auxilary import PositionalEncoding
 
 class SAMLEncoder(nn.Module):
-    def __init__(self, dim, num_heads, num_layers, vocab_size, vocab_dim, max_saml_layers, final_dim):
+    def __init__(self, dim, num_heads, num_layers, vocab_size, vocab_dim, max_saml_layers):
         super(SAMLEncoder, self).__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -13,7 +13,6 @@ class SAMLEncoder(nn.Module):
         self.vocab_size = vocab_size
         self.vocab_dim = vocab_dim
         self.max_saml_layers = max_saml_layers
-        self.final_dim = final_dim
 
         self.emb_layer = nn.Embedding(vocab_size, vocab_dim)
         self.proj_in = nn.Linear(vocab_dim + 4 + 8, dim)

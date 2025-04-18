@@ -1,23 +1,20 @@
 vision_encoder:
  type: multi
  args:
-  dim: 256
-  num_heads: 8
-  num_layers: 2
+  dim: 64
+  num_heads: 4
+  num_layers: 6
   num_channels: 4
 
-text_encoder:
- type: saml
+text_decoder:
+ type: cross
  args:
-  dim: 256
-  num_heads: 8
-  num_layers: 2
+  dim: 64
+  num_layers: 12
+  num_heads: 4
   vocab_dim: 64
   max_saml_layers: 230
 
-clip_trainer:
-  final_dim: 512
-  
 optimizer:
  type: adamw
  args:
@@ -26,7 +23,8 @@ optimizer:
 
 hyperparameters:
  epochs: 10000
- max_patience: 50
+ max_patience: 1000
  batch_size: 64
  train_split_size: 0.8
  seed: 69
+ test_data: ./output/test/

@@ -20,6 +20,7 @@ from core.models.other.saml_generator import SAMLGenerator
 from core.utils.factories import get_encoder, get_decoder, get_optimizer
 from core.utils.utils import get_parameter_count, get_train_test_split, get_run_path, save_latest, save_best, read_img_cv2, convert_numpy_to_saml
 from core.utils.zclip import ZClip
+from core.utils.loss import HomoscedasticMultiTaskLoss
 
 def load_test_imgs(test_loc):
     test_imgs = []
@@ -60,12 +61,16 @@ def main(args):
 
     if 'seed' in hyperparameter_cfg:
         random.seed(hyperparameter_cfg['seed'])
-
+    
+    print('Loading base data')
     vocab, data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'])
+    print('Loading basic synthetic data')
+    _, syn_data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], data_path=os.path.join('.','output','synthetic','basic'))
     text_cfg['args']['vocab_size'] = len(vocab)
 
     random.shuffle(data)
     train_data, test_data = get_train_test_split(data, hyperparameter_cfg['train_split_size'])
+    train_data += syn_data
     train_dataset, test_dataset = SADataset(train_data, transforms=True), SADataset(test_data, transforms=False)
     train_dataloader = DataLoader(train_dataset, batch_size=hyperparameter_cfg['batch_size'], shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=hyperparameter_cfg['batch_size'], shuffle=False)
@@ -102,18 +107,10 @@ def main(args):
     train_csv.write('epoch,train_loss\n')
     test_csv.write('epoch,test_loss\n')
 
-    cls_loss_start = 0 if 'cls_loss_start' not in hyperparameter_cfg else hyperparameter_cfg['cls_loss_start']
-    col_loss_start = 0 if 'col_loss_start' not in hyperparameter_cfg else hyperparameter_cfg['col_loss_start']
-    pos_loss_start = 0 if 'pos_loss_start' not in hyperparameter_cfg else hyperparameter_cfg['pos_loss_start']
+    criterion = HomoscedasticMultiTaskLoss()
 
     for epoch in range(epochs):
         model.train()
-        if epoch == col_loss_start or epoch == pos_loss_start or epoch == cls_loss_start:
-            print('Adding new loss, resetting optimizer and patience')
-            patience = 0
-            best_loss = float('inf')
-            optimizer = get_optimizer(optimizer_cfg, model.parameters())
-            zclip = ZClip()
         if epoch == unfreeze_epoch:
             model.unfreeze_encoder()
             print('Unfreezing encoder')
@@ -126,29 +123,18 @@ def main(args):
             xin, xout = labels[:, :-1].to(device), labels[:, 1:].to(device)
             cls_out, col_out, pos_out = xout[:,:,0], xout[:,:,1:5], xout[:,:,5:]
             mask_in, mask_out = batch['mask'][:, :-1].to(device), batch['mask'][:, 1:].to(device)
-
-            losses = []
-
             cls_guess, col_guess, pos_guess = model(xin, feature, mask_in)
             cls_loss = F.cross_entropy(cls_guess.permute(0,2,1), cls_out.long(), ignore_index=vocab['<PAD>'])
-            if epoch >= cls_loss_start:
-                losses.append(cls_loss)
-                cls_total += cls_loss.item()
-            col_loss = F.mse_loss(col_guess, col_out, reduction='none')
+            cls_total += cls_loss.item()
+            col_loss = F.smooth_l1_loss(col_guess, col_out, reduction='none')
             col_loss = (col_loss * repeat(mask_out, 'b l -> b l d', d=4).float()).sum()
             col_loss = col_loss / mask_out.sum()
-            if epoch >= col_loss_start:
-                losses.append(col_loss)
-                col_total += col_loss.item()
-            pos_loss = F.mse_loss(pos_guess, pos_out, reduction='none')
+            col_total += col_loss.item()
+            pos_loss = F.smooth_l1_loss(pos_guess, pos_out, reduction='none')
             pos_loss = (pos_loss * repeat(mask_out, 'b l -> b l d', d=8).float()).sum()
             pos_loss = pos_loss / mask_out.sum()
-            if epoch >= pos_loss_start:
-                losses.append(pos_loss)
-                pos_total += pos_loss.item()
-            train_loss = sum(losses)
-            #train_loss = (cls_loss + col_loss + pos_loss)
-
+            pos_total += pos_loss.item()
+            train_loss = criterion(cls_loss, col_loss, pos_loss)
             optimizer.zero_grad()
             train_loss.backward()
             zclip.step(model)
@@ -168,27 +154,19 @@ def main(args):
                 cls_out, col_out, pos_out = xout[:,:,0], xout[:,:,1:5], xout[:,:,5:]
                 mask_in, mask_out = batch['mask'][:, :-1].to(device), batch['mask'][:, 1:].to(device)
 
-                losses = []
-
                 cls_guess, col_guess, pos_guess = model(xin, feature, mask_in)
                 cls_loss = F.cross_entropy(cls_guess.permute(0,2,1), cls_out.long(), ignore_index=vocab['<PAD>'])
-                if epoch >= cls_loss_start:
-                    losses.append(cls_loss)
-                    cls_total += cls_loss.item()
-                col_loss = F.mse_loss(col_guess, col_out, reduction='none')
+
+                cls_total += cls_loss.item()
+                col_loss = F.smooth_l1_loss(col_guess, col_out, reduction='none')
                 col_loss = (col_loss * repeat(mask_out, 'b l -> b l d', d=4).float()).sum()
                 col_loss = col_loss / mask_out.sum()
-                if epoch >= col_loss_start:
-                    losses.append(col_loss)
-                    col_total += col_loss.item()
-                pos_loss = F.mse_loss(pos_guess, pos_out, reduction='none')
+                col_total += col_loss.item()
+                pos_loss = F.smooth_l1_loss(pos_guess, pos_out, reduction='none')
                 pos_loss = (pos_loss * repeat(mask_out, 'b l -> b l d', d=8).float()).sum()
                 pos_loss = pos_loss / mask_out.sum()
-                if epoch >= pos_loss_start:
-                    losses.append(pos_loss)
-                    pos_total += pos_loss.item()
-                #test_loss = (cls_loss + col_loss + pos_loss)
-                test_loss = sum(losses)
+                pos_total += pos_loss.item()
+                test_loss = (cls_loss + col_loss + pos_loss)
                 total_loss += test_loss.item()
         test_csv.write(f'{epoch},{total_loss/len(test_dataloader)}\n')
         if total_loss < best_loss:

@@ -7,16 +7,15 @@ import torch.nn.functional as F
 from core.models.other.auxilary import DownscaleBlock, PositionalEncoding
 
 class ConvolutionalImageEncoder(nn.Module):
-    def __init__(self, dim, num_heads, num_layers, num_channels, final_dim):
+    def __init__(self, dim, num_heads, num_layers, num_channels):
         super(ConvolutionalImageEncoder, self).__init__()
         self.dim = dim
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.num_channels = num_channels
-        self.final_dim = final_dim
 
         self.conv0 = nn.Conv2d(in_channels=num_channels, out_channels=8, kernel_size=1, stride=1)
-        self.bn0 = nn.BatchNorm2d(8)
+        self.bn0 = nn.GroupNorm(4, 8)
         self.act0 = nn.SiLU()
 
         self.downscale1 = DownscaleBlock(8, 16, kernel_size=5)

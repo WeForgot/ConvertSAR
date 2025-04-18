@@ -32,8 +32,8 @@ class GEGLU(nn.Module):
 class DownscaleBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
         super(DownscaleBlock, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding='valid')
-        self.norm = nn.BatchNorm2d(out_channels)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding='valid', bias=False)
+        self.norm = nn.GroupNorm(4, out_channels)
         self.act = nn.SiLU()
     
     def forward(self, x):
@@ -47,11 +47,11 @@ class MultiScaleBlock(nn.Module):
         super(MultiScaleBlock, self).__init__()
         self.num_scales = len(block_kernel_sizes)
         self.convolutions = nn.ModuleList([
-            nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=k, padding='same')
+            nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=k, padding='same', bias=False)
             for k in block_kernel_sizes
         ])
         self.scale_weights = nn.Parameter(torch.ones(self.num_scales))  # raw, unnormalized
-        self.bn = nn.BatchNorm2d(num_features=dim)
+        self.bn = nn.GroupNorm(4, dim)
 
     def forward(self, x):
         weights = F.softmax(self.scale_weights, dim=0)  # normalized importance

@@ -1,11 +1,16 @@
 vision_encoder:
- checkpoint: ./runs/clip/0/
+ type: multi
+ args:
+  dim: 32
+  num_heads: 4
+  num_layers: 6
+  num_channels: 4
 
 text_decoder:
  type: rnn
  args:
-  dim: 128
-  num_layers: 6
+  dim: 32
+  num_layers: 12
   vocab_dim: 64
   max_saml_layers: 230
 
@@ -22,7 +27,3 @@ hyperparameters:
  train_split_size: 0.8
  seed: 69
  test_data: ./output/test/
- unfreeze_epoch: 25
- cls_loss_start: 0
- col_loss_start: 0
- pos_loss_start: 0

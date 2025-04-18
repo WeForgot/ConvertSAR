@@ -7,7 +7,6 @@ vision_encoder:
   image_size: 384
   patch_size: 16
   num_channels: 4
-  final_dim: 512
 
 text_encoder:
  type: saml
@@ -17,8 +16,10 @@ text_encoder:
   num_layers: 2
   vocab_dim: 128
   max_saml_layers: 230
-  final_dim: 512
 
+clip_trainer:
+  final_dim: 512
+  
 optimizer:
  type: adamw
  args:
