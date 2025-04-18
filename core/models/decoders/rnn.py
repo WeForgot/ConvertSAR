@@ -1,3 +1,5 @@
+from einops import repeat
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,8 +14,9 @@ class RNNDecoder(nn.Module):
         self.ctx_proj = nn.Linear(input_dim, dim) if input_dim != dim else nn.Identity()
         self.pos_emb = PositionalEncoding(max_saml_layers, dim)
         self.num_cls = vocab_size
+        self.num_layers = num_layers
 
-        self.rnn = nn.RNN(
+        self.rnn = nn.LSTM(
             input_size=dim,
             hidden_size=dim,
             num_layers=num_layers,
@@ -40,7 +43,6 @@ class RNNDecoder(nn.Module):
         )
     
     def forward(self, tgt, context, *args, **kwargs):
-        context_len = context.shape[1]
         x, y = torch.split(tgt, [1, 12], dim=-1)
         x = self.layer_embs(x.long()).squeeze(2)
         tgt = torch.cat([x, y], dim=-1)
@@ -49,8 +51,9 @@ class RNNDecoder(nn.Module):
         x = self.pos_emb(x)
 
         context = self.ctx_proj(context)
-        x = torch.cat([context, x], dim=1)
-        x, _ = self.rnn(x)
-        x = x[:, context_len:, :]
+        hn = context.mean(dim=1)
+        hn = repeat(hn, 'b d -> l b d', l=self.num_layers).contiguous()
+        cn = torch.zeros_like(hn).to(hn.device)
+        x, _ = self.rnn(x, (hn, cn))
         cls_out, col_out, pos_out = self.cls_out(x), self.col_out(x), self.pos_out(x)
         return cls_out, col_out, pos_out

@@ -1,5 +1,8 @@
+from typing import List
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class PositionalEncoding(nn.Module):
     def __init__(self, max_len, dim):
@@ -38,3 +41,19 @@ class DownscaleBlock(nn.Module):
         x = self.norm(x)
         x = self.act(x)
         return x
+
+class MultiScaleBlock(nn.Module):
+    def __init__(self, dim: int, block_kernel_sizes: List[int]):
+        super(MultiScaleBlock, self).__init__()
+        self.num_scales = len(block_kernel_sizes)
+        self.convolutions = nn.ModuleList([
+            nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=k, padding='same')
+            for k in block_kernel_sizes
+        ])
+        self.scale_weights = nn.Parameter(torch.ones(self.num_scales))  # raw, unnormalized
+        self.bn = nn.BatchNorm2d(num_features=dim)
+
+    def forward(self, x):
+        weights = F.softmax(self.scale_weights, dim=0)  # normalized importance
+        out = sum(w * conv(x) for w, conv in zip(weights, self.convolutions))
+        return x + self.bn(out)

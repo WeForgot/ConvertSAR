@@ -43,9 +43,6 @@ class CrossAttentionDecoder(nn.Module):
 
         mask = nn.Transformer.generate_square_subsequent_mask(x.shape[1]).to(x.device)
 
-        # Note: Our padding mask uses False for padded positions and True for valid tokens.
-        # This is the reverse of the conventional approach, but it allows us to use the same mask
-        # for both loss calculation and attention masking.
         padding_mask = torch.where(padding_mask == False, 0, float('-inf')) if padding_mask is not None and padding_mask.dtype == torch.bool else padding_mask
 
         context = self.ctx_proj(context)

@@ -46,7 +46,7 @@ def center_crop(image, target_width=382, target_height=190):
     
     return cropped_image
 
-def main(input_path: str, output_path: str):
+def main(input_path: str, output_path: str, copy_saml: bool = False):
     all_saml = glob.glob(os.path.join(input_path, '*.saml')) + glob.glob(os.path.join(input_path, '*.sar'))
     for saml in all_saml:
         print(f'Converting {saml}')
@@ -61,7 +61,8 @@ def main(input_path: str, output_path: str):
         img = robust_imread(png_path)
         img = center_crop(img)
         robust_imwrite(png_path, img)
-        shutil.copy(saml, png_path.replace('.png', '.saml'))
+        if copy_saml:
+            shutil.copy(saml, png_path.replace('.png', '.saml'))
 
 
 if __name__ == "__main__":
@@ -70,7 +71,10 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=dir_path, help="Path to save the converted files.")
     args = parser.parse_args()
 
+    copy_saml = True
+
     if args.output_path is None:
+        copy_saml = False
         args.output_path = args.input_path
 
-    main(args.input_path, args.output_path)
+    main(args.input_path, args.output_path, copy_saml=copy_saml)

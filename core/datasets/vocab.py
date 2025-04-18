@@ -1,3 +1,5 @@
+import json
+
 class Vocabulary(object):
     def __init__(self, layer_names=None, verbose=False):
         self.layer_to_idx = {'<PAD>': 0, '<SOS>': 1, '<EOS>': 2}
@@ -32,3 +34,21 @@ class Vocabulary(object):
             return self.idx_to_layer[idx]
         else:
             raise ValueError('Vocabulary indices can only be strings or integers')
+    
+    def save(self, filepath):
+        with open(filepath, 'w') as f:
+            json.dump(
+                {
+                    'layer_to_idx': self.layer_to_idx,
+                    'idx_to_layer': self.idx_to_layer
+                }
+            )
+    
+    @classmethod
+    def load(cls, filepath):
+        with open(filepath, 'r') as f:
+            loaded = json.load(f)
+        temp = cls()
+        temp.idx_to_layer = loaded['idx_to_layer']
+        temp.layer_to_idx = loaded['layer_to_idx']
+        return temp

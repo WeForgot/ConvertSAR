@@ -6,6 +6,7 @@ from core.models.encoders import *
 
 ENCODER_REGISTRY = {
     'conv': ConvolutionalImageEncoder,
+    'multi': MultiScaleConvolutionalImageEncoder,
     'vit': ViTImageEncoder,
     'saml': SAMLEncoder
 }
