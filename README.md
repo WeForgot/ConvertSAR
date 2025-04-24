@@ -52,7 +52,7 @@ pip install torch torchvision opencv-python tqdm einops pyyaml lxml pillow webco
 All training scripts are unified under a config-driven pipeline. To run CLIP pretraining:
 
 ```bash
-python train_clip.py --config=configs/clip_baseline.yaml
+python train_clip.py --config=configs/clip/clip_multi_tiny.yaml
 ```
 
 Your runs will be logged under:
