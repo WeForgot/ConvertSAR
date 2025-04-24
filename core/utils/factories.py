@@ -8,10 +8,12 @@ ENCODER_REGISTRY = {
     'conv': ConvolutionalImageEncoder,
     'multi': MultiScaleConvolutionalImageEncoder,
     'vit': ViTImageEncoder,
-    'saml': SAMLEncoder
+    'saml': SAMLEncoder,
+    'perc': PerceieverImageEncoder
 }
 
 DECODER_REGISTRY = {
+
     'cross': CrossAttentionDecoder,
     'rnn': RNNDecoder
 }

@@ -30,8 +30,8 @@ class PerceieverImageEncoder(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))
         self.dropout = nn.Dropout(0.1)
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=dim, nhead=num_heads, batch_first=True)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        encoder_layer = nn.TransformerDecoderLayer(d_model=dim, nhead=num_heads, batch_first=True)
+        self.transformer_decoder = nn.TransformerDecoder(encoder_layer, num_layers=num_layers)
         self.layer_norm = nn.LayerNorm(dim)
 
     def forward(self, x):
@@ -41,6 +41,6 @@ class PerceieverImageEncoder(nn.Module):
         x = self.patch_norm(x)
         x = x + self.pos_embedding
         x = self.dropout(x)
-        x = self.transformer_encoder(x)
+        x = self.transformer_decoder(self.memory_tokens, x)
         x = self.layer_norm(x)
         return x
