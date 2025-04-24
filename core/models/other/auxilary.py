@@ -50,10 +50,10 @@ class MultiScaleBlock(nn.Module):
             nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=k, padding='same', bias=False)
             for k in block_kernel_sizes
         ])
-        self.scale_weights = nn.Parameter(torch.ones(self.num_scales))  # raw, unnormalized
+        self.scale_weights = nn.Parameter(torch.ones(self.num_scales))
         self.bn = nn.GroupNorm(4, dim)
 
     def forward(self, x):
-        weights = F.softmax(self.scale_weights, dim=0)  # normalized importance
+        weights = F.softmax(self.scale_weights, dim=0)
         out = sum(w * conv(x) for w, conv in zip(weights, self.convolutions))
         return x + self.bn(out)

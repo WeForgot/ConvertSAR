@@ -11,12 +11,12 @@ text_encoder:
  args:
   dim: 64
   num_heads: 4
-  num_layers: 2
+  num_layers: 4
   vocab_dim: 64
   max_saml_layers: 230
 
 clip_trainer:
-  final_dim: 512
+  final_dim: 128
   
 optimizer:
  type: adamw

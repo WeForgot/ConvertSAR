@@ -42,13 +42,12 @@ def random_position(left_range: tuple = (-100, 50), right_range: tuple = (-50, 1
 import numpy as np
 from PIL import Image, ImageDraw
 
-# 1) Setup
 CANVAS_PIX = 256
 
 def to_px(x, y):
     """Map (–127..127) → (0..CANVAS_PIX‑1) pixel coords."""
     ix = int((x + 127) / 254 * (CANVAS_PIX-1))
-    iy = int((127 - y) / 254 * (CANVAS_PIX-1))  # invert Y so +127 is top
+    iy = int((127 - y) / 254 * (CANVAS_PIX-1))
     return ix, iy
 
 def quad_mask(coords):
@@ -68,8 +67,6 @@ VISIBLE_Y = (-91,  91)
 def is_partially_visible(coords):
     xs = coords[0::2]
     ys = coords[1::2]
-    # if all x’s are left of the window OR all x’s right OR all y’s above OR all y’s below,
-    # it’s totally invisible
     if max(xs) < VISIBLE_X[0] or min(xs) > VISIBLE_X[1]:
         return False
     if max(ys) < VISIBLE_Y[0] or min(ys) > VISIBLE_Y[1]:
@@ -77,7 +74,6 @@ def is_partially_visible(coords):
     return True
 
 def create_layers(vocab: Vocabulary, n_layers: int, max_attempts: int = 10, IOU_THRESHOLD: float = 0.7, layer_counts: np.ndarray = None):
-    # 2) Placement loop
     placed_masks = []
     layers_to_return = []
 
@@ -98,25 +94,21 @@ def create_layers(vocab: Vocabulary, n_layers: int, max_attempts: int = 10, IOU_
         coords = None
 
         for attempt in range(max_attempts):
-            # random quad coords in –127..127
             coords = np.random.uniform(-127, 127, size=8).tolist()
 
             if not is_partially_visible(coords):
-                continue   # skip fully off‐screen quads
+                continue
 
             mask = quad_mask(coords)
 
-            # compute overlap ratio
             overlap = (mask & occ).sum()
             frac = overlap / mask.sum()
 
             if frac < IOU_THRESHOLD:
-                # accept
                 placed_masks.append(mask)
                 occ |= mask
                 break
         else:
-            # failed to place after N tries
             placed_masks.append(mask)
             occ |= mask
         
