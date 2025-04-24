@@ -80,8 +80,8 @@ You’ll need to bring your own `.saml` files + corresponding `.png` images. Onc
 ## 📌 Roadmap
 
 - [x] CLIP-style image/text encoder setup
-- [ ] Generative decoding (transformer + recurrent decoder support)
-- [ ] SAML construction via model outputs
+- [x] Generative decoding (transformer + recurrent decoder support)
+- [ ] Layerwise SAML construction via intermediate model outputs
 - [ ] RL fine-tuning based on image similarity and layer count minimization
 - [ ] (Optional) Create a community permissible dataset for SAML generator training
 
