@@ -30,7 +30,6 @@ class SAMLEncoder(nn.Module):
         x = self.proj_in(x)
         x = self.pos_embedding(x)
         x = self.dropout(x)
-        mask = nn.Transformer.generate_square_subsequent_mask(x.size(1)).to(x.device)
-        x = self.transformer_encoder(x, mask=mask, src_key_padding_mask=padding_mask, is_causal=True)
+        x = self.transformer_encoder(x, src_key_padding_mask=~padding_mask)
         x = self.layer_norm(x)
         return x
