@@ -178,3 +178,6 @@ assets/
 output/
 
 OpenSAE/
+
+# Cause I am lazy :)
+*.pem

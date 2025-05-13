@@ -23,4 +23,4 @@ hyperparameters:
  train_split_size: 0.8
  seed: 69
  test_data: ./output/test/
- unfreeze_epoch: 20
+ unfreeze_epoch: 50
