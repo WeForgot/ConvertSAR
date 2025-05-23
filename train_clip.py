@@ -16,7 +16,7 @@ from core.utils.factories import get_encoder, get_decoder, get_optimizer
 from core.utils.utils import get_parameter_count, get_train_test_split, get_run_path, save_latest, save_best
 from core.utils.zclip import ZClip
 
-def main(args):
+def main(args, progress):
     device = torch.device('cuda:0') if torch.cuda.device_count() > 0 else torch.device('cpu')
     vision_cfg = args['vision_encoder']
     text_cfg = args['text_encoder']
@@ -28,9 +28,9 @@ def main(args):
         random.seed(hyperparameter_cfg['seed'])
 
     print('Loading base data')
-    vocab, data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'])
+    vocab, data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], verbose=progress)
     print('Loading basic synthetic data')
-    _, syn_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], data_path=os.path.join('.','output','synthetic','basic'))
+    _, syn_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], verbose=progress, data_path=os.path.join('.','output','synthetic','basic'))
     text_cfg['args']['vocab_size'] = len(vocab)
 
     random.shuffle(data)
@@ -67,7 +67,7 @@ def main(args):
     for epoch in range(epochs):
         clip_trainer.train()
         total_loss = 0.0
-        for bdx, batch in enumerate(tqdm(train_dataloader, desc='Training', leave=False)):
+        for bdx, batch in enumerate(tqdm(train_dataloader, desc='Training', leave=False, disable=not progress)):
             feature = batch['feature'].to(device)
             labels = batch['label'].to(device)
             masks = batch['mask'].to(device)
@@ -88,7 +88,7 @@ def main(args):
         clip_trainer.eval()
         total_loss = 0.0
         with torch.no_grad():
-            for bdx, batch in enumerate(tqdm(test_dataloader, desc='Testing', leave=False)):
+            for bdx, batch in enumerate(tqdm(test_dataloader, desc='Testing', leave=False, disable=not progress)):
                 feature = batch['feature'].to(device)
                 labels = batch['label'].to(device)
                 masks = batch['mask'].to(device)
@@ -119,6 +119,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description='Train CLIP model')
     parser.add_argument('--config', type=str, required=True, help='Path to the configuration file')
+    parser.add_argument('--progress', action='store_true', help='Show progress bars')
     args = parser.parse_args()
     # Load configuration file
     config_path = args.config
@@ -129,4 +130,4 @@ if __name__ == '__main__':
             config = yaml.safe_load(f)
         except yaml.YAMLError as exc:
             raise ValueError(f"Error parsing YAML configuration file: {exc}")
-    main(config)
+    main(config, args.progress)

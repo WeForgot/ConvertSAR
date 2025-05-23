@@ -20,7 +20,6 @@ from core.models.other.saml_generator import SAMLGenerator
 from core.utils.factories import get_encoder, get_decoder, get_optimizer
 from core.utils.utils import get_parameter_count, get_train_test_split, get_run_path, save_latest, save_best, read_img_cv2, convert_numpy_to_saml
 from core.utils.zclip import ZClip
-from core.utils.loss import HomoscedasticMultiTaskLoss
 
 def load_test_imgs(test_loc):
     test_imgs = []
@@ -46,7 +45,7 @@ def convert_saml_numpy(saml_layers):
         saml_layers[ldx][12] *= 127
     return saml_layers
 
-def main(args):
+def main(args, progress):
     device = torch.device('cuda:0') if torch.cuda.device_count() > 0 else torch.device('cpu')
     vision_cfg = args['vision_encoder']
     vision_weights = None
@@ -63,9 +62,9 @@ def main(args):
         random.seed(hyperparameter_cfg['seed'])
     
     print('Loading base data')
-    vocab, data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'])
+    vocab, data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], verbose=progress)
     print('Loading basic synthetic data')
-    _, syn_data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], data_path=os.path.join('.','output','synthetic','basic'))
+    _, syn_data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], verbose=progress, data_path=os.path.join('.','output','synthetic','basic'))
     text_cfg['args']['vocab_size'] = len(vocab)
 
     random.shuffle(data)
@@ -107,8 +106,6 @@ def main(args):
     train_csv.write('epoch,train_loss\n')
     test_csv.write('epoch,test_loss\n')
 
-    criterion = HomoscedasticMultiTaskLoss()
-
     for epoch in range(epochs):
         model.train()
         if epoch == unfreeze_epoch:
@@ -117,7 +114,7 @@ def main(args):
         elif epoch < unfreeze_epoch:
             model.freeze_encoder()
         total_loss, cls_total, col_total, pos_total = 0.0, 0.0, 0.0, 0.0
-        for bdx, batch in enumerate(tqdm(train_dataloader, desc='Training', leave=False)):
+        for bdx, batch in enumerate(tqdm(train_dataloader, desc='Training', leave=False, disable=not progress)):
             feature = batch['feature'].to(device)
             labels = batch['label']
             xin, xout = labels[:, :-1].to(device), labels[:, 1:].to(device)
@@ -134,7 +131,7 @@ def main(args):
             pos_loss = (pos_loss * repeat(mask_out, 'b l -> b l d', d=8).float()).sum()
             pos_loss = pos_loss / mask_out.sum()
             pos_total += pos_loss.item()
-            train_loss = criterion(cls_loss, col_loss, pos_loss)
+            train_loss = cls_guess + col_guess + pos_guess
             optimizer.zero_grad()
             train_loss.backward()
             zclip.step(model)
@@ -147,7 +144,7 @@ def main(args):
         model.eval()
         total_loss, cls_total, col_total, pos_total = 0.0, 0.0, 0.0, 0.0
         with torch.no_grad():
-            for bdx, batch in enumerate(tqdm(test_dataloader, desc='Testing', leave=False)):
+            for bdx, batch in enumerate(tqdm(test_dataloader, desc='Testing', leave=False, disable=not progress)):
                 feature = batch['feature'].to(device)
                 labels = batch['label']
                 xin, xout = labels[:, :-1].to(device), labels[:, 1:].to(device)
@@ -194,6 +191,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description='Train CLIP model')
     parser.add_argument('--config', type=str, required=True, help='Path to the configuration file')
+    parser.add_argument('--progress', action='store_true', help='Show progress bars')
     args = parser.parse_args()
     # Load configuration file
     config_path = args.config
@@ -204,4 +202,4 @@ if __name__ == '__main__':
             config = yaml.safe_load(f)
         except yaml.YAMLError as exc:
             raise ValueError(f"Error parsing YAML configuration file: {exc}")
-    main(config)
+    main(config, args.progress)

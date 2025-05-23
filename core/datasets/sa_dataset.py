@@ -87,7 +87,7 @@ def get_data(verbose: bool = False, layer_names: list = None, data_path: str = o
     eos_line = [vocab['<EOS>']] + [0] * 12
     pad_line = [vocab['<PAD>']] + [0] * 12
     
-    for saml_path in tqdm(all_data, desc='Loading SAML files', leave=False):
+    for saml_path in tqdm(all_data, desc='Loading SAML files', leave=False, disable=not verbose):
         try:
             if verbose:
                 print('Loading {}'.format(saml_path))
