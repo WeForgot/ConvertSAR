@@ -42,9 +42,10 @@ class CrossAttentionDecoder(nn.Module):
         x = self.pos_emb(x)
 
         mask = nn.Transformer.generate_square_subsequent_mask(x.shape[1]).to(x.device)
+        padding_mask = ~padding_mask if padding_mask is not None and padding_mask.dtype == torch.bool else padding_mask
 
         context = self.ctx_proj(context)
-        x = self.decoder(x, context, tgt_mask=mask, tgt_is_causal=True, tgt_key_padding_mask=~padding_mask)
+        x = self.decoder(x, context, tgt_mask=mask, tgt_is_causal=True, tgt_key_padding_mask=padding_mask)
         cls_out, col_out, pos_out = self.cls_out(x), self.col_out(x), self.pos_out(x)
         cls_out = torch.matmul(cls_out, self.layer_embs.weight.T)
         return cls_out, col_out, pos_out
