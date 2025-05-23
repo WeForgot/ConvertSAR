@@ -131,7 +131,7 @@ def main(args, progress):
             pos_loss = (pos_loss * repeat(mask_out, 'b l -> b l d', d=8).float()).sum()
             pos_loss = pos_loss / mask_out.sum()
             pos_total += pos_loss.item()
-            train_loss = cls_guess + col_guess + pos_guess
+            train_loss = cls_loss + col_loss + pos_loss
             optimizer.zero_grad()
             train_loss.backward()
             zclip.step(model)
