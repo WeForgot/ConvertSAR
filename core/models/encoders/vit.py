@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torchvision.transforms import Resize
 
 class ViTImageEncoder(nn.Module):
-    def __init__(self, dim: int, num_heads: int, num_layers: int, image_size: int, patch_size: int, final_dim: int, num_channels: int = 4):
+    def __init__(self, dim: int, num_heads: int, num_layers: int, image_size: int, patch_size: int, num_channels: int = 4):
         super(ViTImageEncoder, self).__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -15,7 +15,6 @@ class ViTImageEncoder(nn.Module):
         self.image_size = image_size
         self.patch_size = patch_size
         self.num_channels = num_channels
-        self.final_dim = final_dim
 
 
         assert image_size % patch_size == 0, "Image size must be divisible by patch size"

@@ -29,13 +29,16 @@ def main(args, progress):
 
     print('Loading base data')
     vocab, data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], verbose=progress)
+    print('Loading low layer synthetic data')
+    vocab, sin_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], vocab=vocab, verbose=progress, data_path=os.path.join('.','output','synthetic','single'))
     print('Loading basic synthetic data')
-    _, syn_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], verbose=progress, data_path=os.path.join('.','output','synthetic','basic'))
+    vocab, bas_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], vocab=vocab, verbose=progress, data_path=os.path.join('.','output','synthetic','basic'))
     text_cfg['args']['vocab_size'] = len(vocab)
 
     random.shuffle(data)
     train_data, test_data = get_train_test_split(data, hyperparameter_cfg['train_split_size'])
-    train_data += syn_data
+    train_data += sin_data
+    train_data += bas_data
     train_dataset, test_dataset = SADataset(train_data, transforms=True), SADataset(test_data, transforms=False)
     train_dataloader = DataLoader(train_dataset, batch_size=hyperparameter_cfg['batch_size'], shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=hyperparameter_cfg['batch_size'], shuffle=False)

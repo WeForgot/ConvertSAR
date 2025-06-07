@@ -9,7 +9,8 @@ ENCODER_REGISTRY = {
     'multi': MultiScaleConvolutionalImageEncoder,
     'vit': ViTImageEncoder,
     'saml': SAMLEncoder,
-    'perc': PerceieverImageEncoder
+    'perc': PerceieverImageEncoder,
+    'timm': TimmEncoder
 }
 
 DECODER_REGISTRY = {

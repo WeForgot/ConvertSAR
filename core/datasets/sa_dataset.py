@@ -79,18 +79,16 @@ class SADataset(Dataset):
             label[:, 11] *= -1
         return feature, label
 
-def get_data(verbose: bool = False, layer_names: list = None, data_path: str = os.path.join('.','output','base'), max_len: int = 256, pos_const: float = 127.0, col_const: float = 256.0):
+def get_data(verbose: bool = False, vocab: Vocabulary = None, layer_names: list = None, data_path: str = os.path.join('.','output','base'), max_len: int = 256, pos_const: float = 127.0, col_const: float = 256.0):
     all_data = glob.glob(os.path.join(data_path, '*.saml'))
     data = []
-    vocab = Vocabulary(layer_names=layer_names)
+    vocab = Vocabulary(layer_names=layer_names) if vocab is None else vocab
     sos_line = [vocab['<SOS>']] + [0] * 12
     eos_line = [vocab['<EOS>']] + [0] * 12
     pad_line = [vocab['<PAD>']] + [0] * 12
     
     for saml_path in tqdm(all_data, desc='Loading SAML files', leave=False, disable=not verbose):
         try:
-            if verbose:
-                print('Loading {}'.format(saml_path))
             with open(saml_path, 'r', encoding='utf-8-sig') as f:
                 root = ETO.fromstring(f.read())
             
