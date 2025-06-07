@@ -62,11 +62,11 @@ def main(args, progress):
         random.seed(hyperparameter_cfg['seed'])
     
     print('Loading base data')
-    vocab, data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], verbose=progress)
+    vocab, data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], verbose=progress)
     print('Loading low layer synthetic data')
-    vocab, sin_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], vocab=vocab, verbose=progress, data_path=os.path.join('.','output','synthetic','single'))
+    vocab, sin_data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], vocab=vocab, verbose=progress, data_path=os.path.join('.','output','synthetic','single'))
     print('Loading basic synthetic data')
-    vocab, bas_data = get_data(max_len=args['text_encoder']['args']['max_saml_layers'], vocab=vocab, verbose=progress, data_path=os.path.join('.','output','synthetic','basic'))
+    vocab, bas_data = get_data(max_len=args['text_decoder']['args']['max_saml_layers'], vocab=vocab, verbose=progress, data_path=os.path.join('.','output','synthetic','basic'))
     text_cfg['args']['vocab_size'] = len(vocab)
 
     random.shuffle(data)
