@@ -54,13 +54,13 @@ def main(args, progress):
 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size = 16,
+        batch_size = hyperparameter_cfg['batch_size'],
         shuffle = True
     )
 
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size = 16,
+        batch_size = hyperparameter_cfg['batch_size'],
         shuffle = False
     )
 
