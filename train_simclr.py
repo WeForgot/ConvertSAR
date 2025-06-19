@@ -95,7 +95,7 @@ def main(args, progress):
     train_csv.write('epoch,train_loss\n')
     test_csv.write('epoch,test_loss\n')
 
-    for epoch in range(10):
+    for epoch in range(epochs):
         simclr_trainer.train()
         total_loss = 0
         for (x0, x1), _, _ in tqdm(train_dataloader, leave=False):
