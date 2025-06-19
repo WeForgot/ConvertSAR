@@ -29,6 +29,6 @@ optimizer:
 hyperparameters:
  epochs: 10000
  max_patience: 50
- batch_size: 64
+ batch_size: 16
  train_split_size: 0.8
  seed: 69

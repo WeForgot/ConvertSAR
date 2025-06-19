@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from core.models.other.auxilary import DownscaleBlock, PositionalEncoding, MultiScaleBlock
 
 class MultiScaleConvolutionalImageEncoder(nn.Module):
-    def __init__(self, dim, num_heads, num_layers, num_channels):
+    def __init__(self, dim, num_heads, num_layers, num_channels, pos_embs = 196):
         super(MultiScaleConvolutionalImageEncoder, self).__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -29,7 +29,7 @@ class MultiScaleConvolutionalImageEncoder(nn.Module):
         self.proj_out = nn.Conv2d(in_channels=128, out_channels=dim, kernel_size=1, stride=1, bias=False)
 
         self.to_patches = Rearrange('b c h w -> b (h w) c')
-        self.pos_embedding = PositionalEncoding(196, dim)
+        self.pos_embedding = PositionalEncoding(pos_embs, dim)
         
         encoder_layer = nn.TransformerEncoderLayer(d_model=dim, nhead=num_heads, activation=F.silu, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)

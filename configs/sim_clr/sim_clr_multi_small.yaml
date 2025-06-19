@@ -1,0 +1,27 @@
+vision_encoder:
+ type: multi
+ args:
+  dim: 128
+  num_heads: 4
+  num_layers: 3
+  num_channels: 3
+  pos_embs: 484
+
+simclr:
+ input_dim: 18432
+ hidden_dim: 512
+ output_dim: 256
+ image_size: 224
+  
+optimizer:
+ type: adamw
+ args:
+  lr: 1e-5
+  weight_decay: 1e-6
+
+hyperparameters:
+ epochs: 10000
+ max_patience: 50
+ batch_size: 64
+ train_split_size: 0.8
+ seed: 69
