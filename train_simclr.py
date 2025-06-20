@@ -120,6 +120,7 @@ def main(args, progress):
                 loss = criterion(z0, z1)
                 total_loss += loss.item()
         test_csv.write(f'{epoch},{total_loss/len(test_dataloader)}\n')
+        print(f"Epoch {epoch}: Test Loss: {total_loss/len(test_dataloader)}; Patience: {patience}/{max_patience}")
         if total_loss < best_loss:
             patience = 0
         else:
@@ -127,7 +128,6 @@ def main(args, progress):
             if patience >= max_patience:
                 print(f"Early stopping at epoch {epoch}")
                 break
-        print(f"Epoch {epoch}: Test Loss: {total_loss/len(test_dataloader)}; Patience: {patience}/{max_patience}")
         save_latest(run_path, simclr_trainer, optimizer, epoch)
         if total_loss < best_loss:
             torch.save(simclr_trainer.backbone.state_dict(), os.path.join(run_path, 'image_encoder.pth'))
