@@ -18,15 +18,15 @@ import yaml
 from core.datasets.sa_dataset import get_data, SADataset
 from core.models.other.saml_generator import SAMLGenerator
 from core.utils.factories import get_encoder, get_decoder, get_optimizer
-from core.utils.utils import get_parameter_count, get_train_test_split, get_run_path, save_latest, save_best, read_img_cv2, convert_numpy_to_saml
+from core.utils.utils import get_parameter_count, get_train_test_split, get_run_path, save_latest, save_best, read_img_cv2, convert_numpy_to_saml, read_and_convert_img, read_raw_img
 from core.utils.zclip import ZClip
 
-def load_test_imgs(test_loc):
+def load_test_imgs(test_loc, img_format: str = 'rgba'):
     test_imgs = []
+    img_func = read_raw_img if img_format.lower() == 'rgba' else read_and_convert_img
     for img_loc in glob.glob(os.path.join(test_loc, '*.png')):
         img_name = os.path.basename(img_loc)[:-4]
-        feature = torch.tensor(read_img_cv2(img_loc) / 255.).permute(2, 0, 1)
-        feature = transforms.Resize((256, 256), antialias=True)(feature)
+        feature = torch.tensor(img_func(img_loc) / 255.).permute(2, 0, 1)
         test_imgs.append({'feature': feature, 'name': img_name})
     return test_imgs
 
