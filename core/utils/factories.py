@@ -10,7 +10,8 @@ ENCODER_REGISTRY = {
     'vit': ViTImageEncoder,
     'saml': SAMLEncoder,
     'perc': PerceieverImageEncoder,
-    'timm': TimmEncoder
+    'timm': TimmEncoder,
+    'dino': DINOImageEncoder,
 }
 
 DECODER_REGISTRY = {
