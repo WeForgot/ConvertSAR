@@ -113,6 +113,8 @@ def main(args, progress):
         model.train()
         if epoch == unfreeze_epoch:
             model.unfreeze_encoder()
+            optimizer = get_optimizer(optimizer_cfg, model.parameters())
+            zclip = ZClip()
             print('Unfreezing encoder')
         elif epoch < unfreeze_epoch:
             model.freeze_encoder()
