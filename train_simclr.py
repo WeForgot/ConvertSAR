@@ -70,7 +70,7 @@ def main(args, progress):
         input_dim = sim_clr_cfg['input_dim'],
         hidden_dim = sim_clr_cfg['hidden_dim'],
         output_dim = sim_clr_cfg['output_dim']
-    ).to('cuda')
+    ).to(device)
     print('Number of parameters:\n\tTrainable: {}\n\tUntrainable: {}'.format(*(get_parameter_count(simclr_trainer))))
     optimizer = get_optimizer(optimizer_cfg, simclr_trainer.parameters())
 
@@ -99,8 +99,8 @@ def main(args, progress):
         simclr_trainer.train()
         total_loss = 0
         for (x0, x1), _, _ in tqdm(train_dataloader, leave=False):
-            z0 = simclr_trainer(x0.to('cuda'))
-            z1 = simclr_trainer(x1.to('cuda'))
+            z0 = simclr_trainer(x0.to(device))
+            z1 = simclr_trainer(x1.to(device))
             loss = criterion(z0, z1)
 
             optimizer.zero_grad()
@@ -115,8 +115,8 @@ def main(args, progress):
         total_loss = 0
         with torch.no_grad():
             for (x0, x1), _, _ in tqdm(test_dataloader, leave=False):
-                z0 = simclr_trainer(x0.to('cuda'))
-                z1 = simclr_trainer(x1.to('cuda'))
+                z0 = simclr_trainer(x0.to(device))
+                z1 = simclr_trainer(x1.to(device))
                 loss = criterion(z0, z1)
                 total_loss += loss.item()
         test_csv.write(f'{epoch},{total_loss/len(test_dataloader)}\n')

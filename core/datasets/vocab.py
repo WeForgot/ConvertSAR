@@ -41,7 +41,8 @@ class Vocabulary(object):
                 {
                     'layer_to_idx': self.layer_to_idx,
                     'idx_to_layer': self.idx_to_layer
-                }
+                },
+                f
             )
     
     @classmethod

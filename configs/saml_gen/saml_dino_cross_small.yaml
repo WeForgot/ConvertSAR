@@ -1,0 +1,28 @@
+vision_encoder:
+ type: dino
+ args:
+  dim: 128
+
+text_decoder:
+ type: cross
+ args:
+  dim: 128
+  num_layers: 2
+  num_heads: 4
+  vocab_dim: 64
+  max_saml_layers: 230
+
+optimizer:
+ type: adamw
+ args:
+  lr: 1e-4
+  weight_decay: 1e-2
+
+hyperparameters:
+ epochs: 10000
+ max_patience: 50
+ batch_size: 16
+ train_split_size: 0.8
+ seed: 69
+ test_data: ./output/test/
+ unfreeze_epoch: 20

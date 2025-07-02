@@ -17,14 +17,15 @@ from tqdm import tqdm
 from webcolors import hex_to_rgb, rgb_to_hex
 
 from core.datasets.vocab import Vocabulary
-from core.utils.utils import read_img_cv2, clamp
+from core.utils.utils import read_img_cv2, clamp, read_and_convert_img, read_raw_img
 
 class SADataset(Dataset):
-    def __init__(self, data, cache_data = True, transforms = False):
+    def __init__(self, data, cache_data = True, transforms = False, img_format: str = 'rgba'):
         self.data = data
         self.max_len = 256
         self.cache_data = cache_data
         self.transforms = transforms
+        self.img_func = read_raw_img if img_format.lower() == 'rgba' else read_and_convert_img
         if cache_data:
             self.features = [None] * len(data)
             self.labels = [None] * len(data)
@@ -49,7 +50,7 @@ class SADataset(Dataset):
 
         cur_data = self.data[idx]
 
-        feature = torch.tensor(read_img_cv2(cur_data['feature']) / 255.).permute(2, 0, 1)
+        feature = torch.tensor(self.img_func(cur_data['feature']) / 255.).permute(2, 0, 1)
         feature = transforms.Resize((256, 256), antialias=True)(feature)
         label = torch.tensor(cur_data['label'])
         mask = torch.tensor(cur_data['mask'], dtype=torch.bool)
